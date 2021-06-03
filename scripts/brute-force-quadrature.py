@@ -1,58 +1,50 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import random
 from scipy.optimize import minimize
+import sympy
 
 xs = """
--4.499990707309391553664
--3.669950373404452534729
--2.967166927905603248489
--2.325732486173857745454
--1.719992575186488932416
--1.136115585210920666319
--0.565069583255575748526
+-2.020182870456085632929
+-0.9585724646138185071128
 0
-0.565069583255575748526
-1.136115585210920666319
-1.719992575186488932416
-2.32573248617385774545
-2.967166927905603248489
-3.669950373404452534729
-4.499990707309391553664
+0.9585724646138185071128
+2.020182870456085632929
 """
 xs = np.fromiter(xs.split(), float)
-xs2 = xs**2
 
 real_ws = """
-1.522475804253517020161E-9
-1.059115547711066635775E-6
-1.00004441232499868127E-4
-0.002778068842912775896079
-0.03078003387254608222868
-0.1584889157959357468838
-0.4120286874988986270259
-0.5641003087264175328526
-0.4120286874988986270259
-0.1584889157959357468838
-0.03078003387254608222868
-0.00277806884291277589608
-1.00004441232499868127E-4
-1.059115547711066635775E-6
-1.52247580425351702016E-9
+0.01995324205904591320774
+0.3936193231522411598285
+0.9453087204829418812257
+0.393619323152241159828
+0.01995324205904591320774
 """
 real_ws = np.fromiter(real_ws.split(), float)
 
-points = np.random.rand(100) * 20.0 - 10.0
-
 def calc(N):
-    points = np.random.rand(N+1, 100) * 20.0 - 10.0
+    points = np.random.rand(N+1, 2*len(xs)) * 20.0 - 10.0
 
+    # Exact solution
+    def exact():
+        x = sympy.symbols('x')
+        aa = sympy.symbols(f'a0:{N+1}')
+        expr = 0
+        for i in range(N+1):
+            expr += aa[i] * x**i
+        expr = expr*sympy.exp(-x**2)
+
+        expr = sympy.integrate(expr, (x, -sympy.oo, sympy.oo))
+        print("Exact solution:", expr)
+
+        return sympy.lambdify(aa, expr, "numpy")(*points)
+
+    exact = exact()
+
+    # Points for quadrature solution
     f = np.zeros_like(xs)
     for i in range(N+1):
         f = np.multiply.outer(points[i], xs**i) + f
-
-    exact = np.sum(real_ws * f, 1)
 
     def func(ws):
         quadrature = np.sum(ws * f, 1)
@@ -79,7 +71,7 @@ def calc(N):
     print(f"Calculated: {func(ans.x)}")
 
 
-for N in range(50):
-    calc(N)
+for N in range(0, 2*len(xs)-1):
     print(f"##### {N} ######")
+    calc(N)
     print("=================")
