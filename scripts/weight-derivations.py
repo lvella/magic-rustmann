@@ -1,41 +1,45 @@
-from sympy import symbols, Eq, solve, pi, exp, integrate
+import sympy
+import itertools
 
-cx = [0, -1,  1,  0,  0]
-cy = [0,  0,  0, -1,  1]
+D = sympy.sympify(2)
 
-rho, w0, w1, w2, w3, w4, u, v, D0, RT = symbols(
-'rho, w0, w1, w2, w3, w4, u, v, D0, RT')
+C0 = [
+	[0, -1,  1,  0,  0,  1, -1,  1, -1],
+	[0,  0,  0, -1,  1,  1, -1, -1,  1]
+]
 
-def m(i):
-	return (cx[i] - u)**2 + (cy[i] - v)**2
+C = sympy.symbols(f"C:{D}")
+w = sympy.symbols(f"w:{3}")
+w = [w[0], w[1], w[1], w[1], w[1], w[2], w[2], w[2], w[2]]
 
-def f(i):
-	return rho / (2*pi*RT) * exp(-m(i)/(2*RT))
 
-#eqs = [
-#	Eq(rho, w0*f(0) + w1*f(1) + w2*f(2) + w3*f(3) + w4*f(4)),
-#	Eq(rho * u, w0*f(0)*cx[0] + w1*f(1)*cx[1] + w2*f(2)*cx[2] + w3*f(3)*cx[3] + w4*f(4)*cx[4]),
-#	Eq(rho * v, w0*f(0)*cy[0] + w1*f(1)*cy[1] + w2*f(2)*cy[2] + w3*f(3)*cy[3] + w4*f(4)*cy[4]),
-#	Eq(rho * D0 * RT, w0*f(0)*m(0) + w1*f(1)*m(1) + w2*f(2)*m(2) + w3*f(3)*m(3) + w4*f(4)*m(4)),
-#	Eq(1, w0 + w1 + w2 + w3 + w4)
-#]
-#
-#print(solve(eqs, (w0, w1, w2, w3, w4)))
-#
-val = (w0*f(0) + w1*f(1) + w2*f(2) + w3*f(3) + w4*f(4) - rho)**2
-print(val)
+orthogonal_tensors = [
+	sympy.sympify(1),
+	2*C[0],
+	2*C[1],
+	2*C[0]**2 - 1,
+	2*C[1]**2 - 1,
+	2*C[0]*C[1]
+]
 
-val = integrate(val, u)
-print(val)
+exp = sympy.exp(-(C[0]**2 + C[1]**2))
 
-val = integrate(val, v)
-print(val)
+def eq(tensor_a, tensor_b):
+	print(tensor_a, tensor_b)
+	quadrature = 0
+	for i in range(len(w)):
+		sub_list = [(a, b[i]) for a, b in zip(C, C0)]
+		quadrature += w[i] * tensor_a.subs(sub_list) * tensor_b.subs(sub_list)
 
-val = integrate(val, rho)
-print(val)
+	rhs = 1/sympy.pi**(D/2) * sympy.integrate(
+		sympy.integrate(exp*tensor_a*tensor_b, (C[0], -sympy.oo, sympy.oo)),
+		(C[1], -sympy.oo, sympy.oo))
 
-val = integrate(val, RT)
-print(val)
+	return sympy.Eq(quadrature, rhs)
 
-val = integrate(val, D0)
-print(val)
+eqs = [eq(a,b) for a,b in itertools.combinations_with_replacement(orthogonal_tensors, 2)]
+eqs = eqs[:-6]
+for e in eqs:
+	print(e)
+
+print(sympy.solve(eqs, w))
